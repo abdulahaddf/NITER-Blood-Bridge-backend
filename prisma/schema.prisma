@@ -13,14 +13,14 @@ datasource db {
 // ─── ENUMS ───────────────────────────────────────────────────
 
 enum BloodGroup {
-  A_POS  // A+
-  A_NEG  // A-
-  B_POS  // B+
-  B_NEG  // B-
+  A_POS // A+
+  A_NEG // A-
+  B_POS // B+
+  B_NEG // B-
   AB_POS // AB+
   AB_NEG // AB-
-  O_POS  // O+
-  O_NEG  // O-
+  O_POS // O+
+  O_NEG // O-
 }
 
 enum Department {
@@ -78,16 +78,15 @@ model User {
   isActive          Boolean   @default(true)
 
   // Relations
-  profile           DonorProfile?
-  notifications     Notification[]
-  contactReveals    ContactReveal[] @relation("Requester")
-  revealedTo        ContactReveal[] @relation("DonorRevealed")
-  deletionRequest   DeletionRequest?
-  bloodRequests     BloodRequest[]
-  
-  assignedAdminBy   User?     @relation("AdminAssignment", fields: [assignedAdminById], references: [id])
+  profile         DonorProfile?
+  notifications   Notification[]
+  contactReveals  ContactReveal[]  @relation("Requester")
+  deletionRequest DeletionRequest?
+  bloodRequests   BloodRequest[]
+
+  assignedAdminBy   User?           @relation("AdminAssignment", fields: [assignedAdminById], references: [id])
   assignedAdminById String?
-  adminAssignees    User[]    @relation("AdminAssignment")
+  adminAssignees    User[]          @relation("AdminAssignment")
   adminAuditLogs    AdminAuditLog[]
 
   @@index([email])
@@ -98,44 +97,44 @@ model User {
 // ─── DONOR PROFILES ──────────────────────────────────────────
 
 model DonorProfile {
-  id                  String             @id @default(cuid())
-  userId              String             @unique
-  user                User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   // Identity
-  fullName            String
-  department          Department
-  idNumber            String
-  studentId           String             @unique
-  batch               Int
-  phone               String
-  email               String
-  
+  fullName   String
+  department Department
+  idNumber   String
+  studentId  String     @unique
+  batch      Int
+  phone      String
+  email      String
+
   // Location
-  currentLocation     String
-  hometown            String
-  
+  currentLocation String
+  hometown        String
+
   // Blood & Donation
-  bloodGroup          BloodGroup
-  lastDonationDate    DateTime?
-  totalDonations      Int                @default(0)
-  availabilityStatus  AvailabilityStatus @default(AVAILABLE)
-  availabilityNote    String?
-  willingToDonate     Boolean            @default(true)
-  
+  bloodGroup         BloodGroup
+  lastDonationDate   DateTime?
+  totalDonations     Int                @default(0)
+  availabilityStatus AvailabilityStatus @default(AVAILABLE)
+  availabilityNote   String?
+  willingToDonate    Boolean            @default(true)
+
   // Verification
-  seedMatched         Boolean            @default(false)
-  seedMatchedAt       DateTime?
-  profileComplete     Boolean            @default(false)
-  profilePhoto        String?            // Supabase Storage URL
-  
-  createdAt           DateTime           @default(now())
-  updatedAt           DateTime           @updatedAt
-  
+  seedMatched     Boolean   @default(false)
+  seedMatchedAt   DateTime?
+  profileComplete Boolean   @default(false)
+  profilePhoto    String? // Supabase Storage URL
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relations
-  donationHistory     DonationLog[]
-  contactReveals      ContactReveal[]    @relation("DonorRevealed")
-  deletionRequest     DeletionRequest?
+  donationHistory DonationLog[]
+  contactReveals  ContactReveal[]  @relation("DonorRevealed")
+  deletionRequest DeletionRequest?
 
   @@index([bloodGroup])
   @@index([department])
@@ -147,15 +146,15 @@ model DonorProfile {
 // ─── SEED DATA (READ-ONLY IMPORT) ────────────────────────────
 
 model SeedDonor {
-  id          String     @id @default(cuid())
-  studentId   String     @unique
-  fullName    String
-  bloodGroup  BloodGroup
-  hometown    String?
-  phone       String?
-  isClaimed   Boolean    @default(false)
-  claimedAt   DateTime?
-  importedAt  DateTime   @default(now())
+  id         String     @id @default(cuid())
+  studentId  String     @unique
+  fullName   String
+  bloodGroup BloodGroup
+  hometown   String?
+  phone      String?
+  isClaimed  Boolean    @default(false)
+  claimedAt  DateTime?
+  importedAt DateTime   @default(now())
 
   @@index([studentId])
   @@index([bloodGroup])
@@ -165,15 +164,15 @@ model SeedDonor {
 // ─── DONATION LOG ─────────────────────────────────────────────
 
 model DonationLog {
-  id            String       @id @default(cuid())
-  profileId     String
-  profile       DonorProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  donationDate  DateTime
-  location      String
-  notes         String?
-  verified      Boolean      @default(false)
-  verifiedBy    String?
-  createdAt     DateTime     @default(now())
+  id           String       @id @default(cuid())
+  profileId    String
+  profile      DonorProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  donationDate DateTime
+  location     String
+  notes        String?
+  verified     Boolean      @default(false)
+  verifiedBy   String?
+  createdAt    DateTime     @default(now())
 
   @@index([profileId])
   @@index([donationDate])
@@ -235,19 +234,19 @@ model Notification {
 // ─── BLOOD REQUESTS ───────────────────────────────────────────
 
 model BloodRequest {
-  id            String     @id @default(cuid())
-  requesterId   String
-  requester     User       @relation(fields: [requesterId], references: [id])
-  bloodGroup    BloodGroup
-  urgency       String     // "routine" | "urgent" | "critical"
-  location      String
-  hospital      String?
-  neededBy      DateTime?
-  message       String?
-  contactPhone  String
-  status        String     @default("open") // open | matched | fulfilled | cancelled
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  id           String     @id @default(cuid())
+  requesterId  String
+  requester    User       @relation(fields: [requesterId], references: [id])
+  bloodGroup   BloodGroup
+  urgency      String // "routine" | "urgent" | "critical"
+  location     String
+  hospital     String?
+  neededBy     DateTime?
+  message      String?
+  contactPhone String
+  status       String     @default("open") // open | matched | fulfilled | cancelled
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 
   @@index([bloodGroup])
   @@index([urgency])
@@ -258,14 +257,14 @@ model BloodRequest {
 // ─── ADMIN AUDIT LOG ─────────────────────────────────────────
 
 model AdminAuditLog {
-  id              String   @id @default(cuid())
-  adminId         String
-  admin           User     @relation(fields: [adminId], references: [id])
-  action          String
-  targetUserId    String?
-  targetUserName  String?
-  details         String?
-  createdAt       DateTime @default(now())
+  id             String   @id @default(cuid())
+  adminId        String
+  admin          User     @relation(fields: [adminId], references: [id])
+  action         String
+  targetUserId   String?
+  targetUserName String?
+  details        String?
+  createdAt      DateTime @default(now())
 
   @@index([adminId])
   @@index([createdAt])
