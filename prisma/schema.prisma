@@ -103,11 +103,12 @@ model DonorProfile {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Identity
-  fullName   String
-  department Department
-  idNumber   String
+  fullName String
+  // Institutional Info
+  department Department?
+  idNumber   String?
   studentId  String     @unique
-  batch      Int
+  batch      Int?
   phone      String
   email      String
 

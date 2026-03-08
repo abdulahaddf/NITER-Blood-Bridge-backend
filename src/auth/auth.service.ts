@@ -262,10 +262,10 @@ export class AuthService {
             userId: user.id,
             fullName,
             email,
-            department: 'TE', // default, user will update
-            idNumber: '',
+            department: null,
+            idNumber: null,
             studentId: `GOOGLE-${user.id.substring(0, 8)}`,
-            batch: 1,
+            batch: null,
             phone: '',
             currentLocation: '',
             hometown: '',

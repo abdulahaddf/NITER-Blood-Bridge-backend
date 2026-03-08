@@ -20,21 +20,8 @@ const BloodCompatibility: Record<BloodGroup, BloodGroup[]> = {
 export class DonorsService {
   constructor(private prisma: PrismaService) {}
 
-  async search(query: SearchDonorsDto) {
-    const {
-      search,
-      bloodGroups,
-      compatibilityMode,
-      eligibilityOnly,
-      departments,
-      batchMin,
-      batchMax,
-      onCampusOnly,
-      willingToDonate,
-      sortBy = 'eligible',
-      page = 1,
-      limit = 39,
-    } = query;
+  async search(searchDto: SearchDonorsDto) {
+    const { search, bloodGroups, departments, batchMin, batchMax, onCampusOnly, willingToDonate, compatibilityMode, eligibilityOnly, page = 1, limit = 20, sortBy = 'eligible' } = searchDto;
 
     // ── Build DonorProfile WHERE clause ────────────────────────
     const where: any = {};
@@ -260,6 +247,7 @@ export class DonorsService {
             bloodGroup: stat.bloodGroup,
             willingToDonate: true,
             availabilityStatus: 'AVAILABLE',
+            profileComplete: true,
           },
         });
 
@@ -315,7 +303,7 @@ export class DonorsService {
     });
 
     const eligibleDonorsFromProfiles = registeredProfiles.filter(
-      (p) => this.calculateEligibility(p).eligible,
+      (p) => p.profileComplete && this.calculateEligibility(p).eligible,
     ).length;
 
     const totalPotentialEligible = unclaimedSeed + eligibleDonorsFromProfiles;
