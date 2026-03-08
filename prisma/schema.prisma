@@ -6,8 +6,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ─── ENUMS ───────────────────────────────────────────────────
@@ -150,6 +151,8 @@ model SeedDonor {
   studentId  String     @unique
   fullName   String
   bloodGroup BloodGroup
+  batch      String?
+  department String?
   hometown   String?
   phone      String?
   isClaimed  Boolean    @default(false)
