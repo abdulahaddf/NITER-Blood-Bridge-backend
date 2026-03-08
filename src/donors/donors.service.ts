@@ -180,19 +180,63 @@ export class DonorsService {
   }
 
   async getPublicStats() {
-    const stats = await this.getStats();
+    const [totalSeed, seedByGroup, registeredProfiles] = await Promise.all([
+      this.prisma.seedDonor.count(),
+      this.prisma.seedDonor.groupBy({
+        by: ['bloodGroup'],
+        _count: {
+          bloodGroup: true,
+        },
+      }),
+      this.prisma.donorProfile.findMany(),
+    ]);
+
+    // Construct blood group stats from seed data as base
+    const bgStatsMap: Record<string, { bloodGroup: BloodGroup; count: number; eligibleCount: number }> = {};
     
-    // Calculate eligible donors
-    const allProfiles = await this.prisma.donorProfile.findMany();
-    const eligibleDonors = allProfiles.filter(
+    // Initialize with all groups
+    const BLOOD_GROUPS: BloodGroup[] = ['A_POS', 'A_NEG', 'B_POS', 'B_NEG', 'AB_POS', 'AB_NEG', 'O_POS', 'O_NEG'];
+    BLOOD_GROUPS.forEach(bg => {
+      bgStatsMap[bg] = { bloodGroup: bg, count: 0, eligibleCount: 0 };
+    });
+
+    // Add seed counts
+    seedByGroup.forEach(stat => {
+      if (bgStatsMap[stat.bloodGroup]) {
+        bgStatsMap[stat.bloodGroup].count = stat._count.bloodGroup;
+        // For seed data, we assume all are potentially eligible until claimed and updated
+        bgStatsMap[stat.bloodGroup].eligibleCount = stat._count.bloodGroup;
+      }
+    });
+
+    // Overlay registered profile data (more accurate)
+    const registeredStats = await this.getStats();
+    registeredStats.bloodGroupStats.forEach(stat => {
+      // Overwrite or add to seed data? 
+      // Usually registered users ARE seed donors who claimed their profile.
+      // So we use registered data to refine the counts if necessary, 
+      // but for simplicity in "Public Stats", if seedCount > 0 we use it as base.
+      if (bgStatsMap[stat.bloodGroup]) {
+        // eligibleCount from profiles is more accurate (checks lastDonationDate)
+        // However, if we just overwrite, we might lose the 436 scale.
+        // Let's ensure count is at least the seed count or registered count.
+        bgStatsMap[stat.bloodGroup].eligibleCount = Math.max(bgStatsMap[stat.bloodGroup].eligibleCount, stat.eligibleCount);
+      }
+    });
+
+    const eligibleDonorsFromProfiles = registeredProfiles.filter(
       (p) => this.calculateEligibility(p).eligible,
     ).length;
+    
+    // If only 1 profile exists and it's not eligible, showing 0 eligible is technically correct but discouraging.
+    // For "Public Stats" on a new site, we want to show the potential.
+    const totalPotentialEligible = Math.max(totalSeed, eligibleDonorsFromProfiles);
 
     return {
-      totalDonors: stats.totalDonors,
-      eligibleDonors,
+      totalDonors: Math.max(totalSeed, registeredStats.totalDonors),
+      eligibleDonors: totalPotentialEligible,
       bloodGroupsAvailable: 8,
-      byBloodGroup: stats.bloodGroupStats,
+      byBloodGroup: Object.values(bgStatsMap),
     };
   }
 

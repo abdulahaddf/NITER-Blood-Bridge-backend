@@ -18,6 +18,7 @@ export class DonorsController {
   }
 
   @Get('stats')
+  @Public()
   @ApiOperation({ summary: 'Get donor statistics' })
   async getStats() {
     return this.donorsService.getStats();
