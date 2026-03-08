@@ -27,13 +27,11 @@ export class SearchDonorsDto {
   @ApiPropertyOptional()
   @IsBoolean()
   @IsOptional()
-  @Transform(({ value }) => value === 'true')
   compatibilityMode?: boolean;
 
   @ApiPropertyOptional()
   @IsBoolean()
   @IsOptional()
-  @Transform(({ value }) => value === 'true')
   eligibilityOnly?: boolean;
 
   @ApiPropertyOptional({ enum: Department, isArray: true })
@@ -58,13 +56,11 @@ export class SearchDonorsDto {
   @ApiPropertyOptional()
   @IsBoolean()
   @IsOptional()
-  @Transform(({ value }) => value === 'true')
   onCampusOnly?: boolean;
 
   @ApiPropertyOptional()
   @IsBoolean()
   @IsOptional()
-  @Transform(({ value }) => value === 'true')
   willingToDonate?: boolean;
 
   @ApiPropertyOptional({ default: 'eligible' })

@@ -49,7 +49,7 @@ export class ProfilesService {
   }
 
   async findById(id: string) {
-    const profile = await this.prisma.donorProfile.findUnique({
+    let profile: any = await this.prisma.donorProfile.findUnique({
       where: { id },
       include: {
         donationHistory: {
@@ -59,7 +59,42 @@ export class ProfilesService {
     });
 
     if (!profile) {
-      throw new NotFoundException('Profile not found');
+      // Fallback: check if it's a seed donor id
+      const seed = await this.prisma.seedDonor.findUnique({
+        where: { id },
+      });
+
+      if (!seed) {
+        throw new NotFoundException('Profile not found');
+      }
+
+      // Format seed donor to look like a profile
+      const batchNum = seed.batch ? parseInt(seed.batch.replace(/\D/g, ''), 10) : 0;
+      profile = {
+        id: seed.id,
+        userId: null,
+        fullName: seed.fullName,
+        department: seed.department || 'TE',
+        idNumber: seed.studentId,
+        studentId: seed.studentId,
+        batch: isNaN(batchNum) ? 0 : batchNum,
+        phone: seed.phone || '',
+        email: '',
+        currentLocation: 'Campus',
+        hometown: seed.hometown || '',
+        bloodGroup: seed.bloodGroup,
+        lastDonationDate: null,
+        totalDonations: 0,
+        availabilityStatus: 'AVAILABLE',
+        availabilityNote: 'Imported from previous database',
+        willingToDonate: true,
+        seedMatched: false,
+        profileComplete: false,
+        profilePhoto: null,
+        createdAt: seed.importedAt,
+        updatedAt: seed.importedAt,
+        donationHistory: [],
+      };
     }
 
     return {
