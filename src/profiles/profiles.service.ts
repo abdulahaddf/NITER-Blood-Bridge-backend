@@ -141,19 +141,19 @@ export class ProfilesService {
 
     const updateData: any = {};
 
-    if (dto.fullName) updateData.fullName = dto.fullName;
-    if (dto.batch) updateData.batch = dto.batch;
-    if (dto.phone) updateData.phone = dto.phone;
-    if (dto.email) updateData.email = dto.email;
-    if (dto.currentLocation) updateData.currentLocation = dto.currentLocation;
-    if (dto.hometown) updateData.hometown = dto.hometown;
-    if (dto.bloodGroup) updateData.bloodGroup = dto.bloodGroup;
+    if (dto.fullName != null) updateData.fullName = dto.fullName;
+    if (dto.batch != null) updateData.batch = dto.batch;
+    if (dto.phone != null) updateData.phone = dto.phone;
+    if (dto.email != null) updateData.email = dto.email;
+    if (dto.currentLocation != null) updateData.currentLocation = dto.currentLocation;
+    if (dto.hometown != null) updateData.hometown = dto.hometown;
+    if (dto.bloodGroup != null) updateData.bloodGroup = dto.bloodGroup;
     if (dto.willingToDonate !== undefined) {
       updateData.willingToDonate = dto.willingToDonate;
       updateData.availabilityStatus = dto.willingToDonate ? 'AVAILABLE' : 'UNAVAILABLE';
     }
     if (dto.availabilityNote !== undefined) updateData.availabilityNote = dto.availabilityNote;
-    if (dto.profilePhoto) updateData.profilePhoto = dto.profilePhoto;
+    if (dto.profilePhoto != null) updateData.profilePhoto = dto.profilePhoto;
 
     // Handle last donation date
     if (dto.neverDonated !== undefined) {
@@ -163,7 +163,7 @@ export class ProfilesService {
     }
 
     // Handle department/idNumber change - check seed match
-    if (dto.department && dto.idNumber) {
+    if (dto.department != null && dto.idNumber != null) {
       const newStudentId = `${dto.department}-${dto.idNumber}`;
       
       if (newStudentId !== profile.studentId) {
@@ -197,6 +197,13 @@ export class ProfilesService {
           });
         }
       }
+    }
+
+    // Check if profile is now complete (has all required fields)
+    const merged = { ...profile, ...updateData };
+    if (merged.fullName && merged.department && merged.idNumber && merged.batch &&
+        merged.phone && merged.email && merged.currentLocation && merged.hometown && merged.bloodGroup) {
+      updateData.profileComplete = true;
     }
 
     return this.prisma.donorProfile.update({

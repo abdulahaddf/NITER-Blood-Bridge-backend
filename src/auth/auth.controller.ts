@@ -81,6 +81,16 @@ export class AuthController {
     return this.authService.refreshTokens(dto.refreshToken);
   }
 
+  @Get('me')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get current user profile' })
+  @ApiResponse({ status: 200 })
+  async me(@Req() req) {
+    // req.user is already the validated user object from JwtStrategy
+    const { id, email, role, emailVerified, isActive } = req.user;
+    return { id, email, role, emailVerified, isActive };
+  }
+
   @Public()
   @Get('google')
   @UseGuards(AuthGuard('google'))
@@ -98,7 +108,7 @@ export class AuthController {
     
     // Redirect to frontend with tokens
     const frontendUrl = this.configService.get('FRONTEND_URL');
-    const redirectUrl = `${frontendUrl}/auth/callback?token=${result.accessToken}&refresh=${result.refreshToken}`;
+    const redirectUrl = `${frontendUrl}/auth/callback?token=${result.accessToken}&refresh=${result.refreshToken}&hasProfile=${result.hasProfile}`;
     
     res.redirect(redirectUrl);
   }

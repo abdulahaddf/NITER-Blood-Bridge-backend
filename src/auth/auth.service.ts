@@ -208,13 +208,16 @@ export class AuthService {
   }
 
   async googleLogin(profile: any) {
-    const { email, googleId } = profile;
+    const { email, googleId, firstName, lastName } = profile;
+    const fullName = [firstName, lastName].filter(Boolean).join(' ') || email.split('@')[0];
 
     let user = await this.prisma.user.findFirst({
       where: {
         OR: [{ googleId }, { email }],
       },
     });
+
+    let isNewUser = false;
 
     if (!user) {
       // Create new user
@@ -225,6 +228,7 @@ export class AuthService {
           emailVerified: true,
         },
       });
+      isNewUser = true;
     } else if (!user.googleId) {
       // Link Google account to existing user
       user = await this.prisma.user.update({
@@ -243,6 +247,39 @@ export class AuthService {
       data: { lastLoginAt: new Date() },
     });
 
+    // Check if DonorProfile exists
+    const existingProfile = await this.prisma.donorProfile.findUnique({
+      where: { userId: user.id },
+    });
+
+    const hasProfile = !!existingProfile;
+
+    // Auto-create a minimal profile for new Google users
+    if (!existingProfile && isNewUser) {
+      try {
+        await this.prisma.donorProfile.create({
+          data: {
+            userId: user.id,
+            fullName,
+            email,
+            department: 'TE', // default, user will update
+            idNumber: '',
+            studentId: `GOOGLE-${user.id.substring(0, 8)}`,
+            batch: 1,
+            phone: '',
+            currentLocation: '',
+            hometown: '',
+            bloodGroup: 'O_POS',
+            willingToDonate: true,
+            availabilityStatus: 'AVAILABLE',
+            profileComplete: false,
+          },
+        });
+      } catch (err) {
+        console.error('Auto-profile creation failed (non-fatal):', err);
+      }
+    }
+
     const tokens = await this.generateTokens(user.id, user.email, user.role);
 
     return {
@@ -252,6 +289,7 @@ export class AuthService {
         role: user.role,
         emailVerified: user.emailVerified,
       },
+      hasProfile,
       ...tokens,
     };
   }
