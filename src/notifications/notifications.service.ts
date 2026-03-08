@@ -31,7 +31,7 @@ export class NotificationsService implements OnModuleInit {
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e1e1e1; border-radius: 8px; overflow: hidden;">
         <div style="background-color: #C0392B; padding: 20px; text-align: center; color: white;">
-          <h1 style="margin: 0;">NITER Blood Connect</h1>
+          <h1 style="margin: 0;">NITER Blood Bridge</h1>
         </div>
         <div style="padding: 30px; line-height: 1.6; color: #333;">
           <h2 style="color: #C0392B;">Welcome to the Brotherhood!</h2>
@@ -42,7 +42,7 @@ export class NotificationsService implements OnModuleInit {
           <p style="font-size: 14px; color: #666;">This link will expire in 24 hours. If you didn't sign up for an account, please ignore this email.</p>
         </div>
         <div style="background-color: #f9f9f9; padding: 15px; text-align: center; font-size: 12px; color: #999;">
-          <p>&copy; ${new Date().getFullYear()} NITER Blood Connect. All rights reserved.</p>
+          <p>&copy; ${new Date().getFullYear()} NITER Blood Bridge. All rights reserved.</p>
         </div>
       </div>
     `;
@@ -51,7 +51,7 @@ export class NotificationsService implements OnModuleInit {
       await this.transporter.sendMail({
         from: this.configService.get('SMTP_FROM'),
         to: email,
-        subject: 'Verify your email - NITER Blood Connect',
+        subject: 'Verify your email - NITER Blood Bridge',
         html,
       });
     } catch (error) {
@@ -68,7 +68,7 @@ export class NotificationsService implements OnModuleInit {
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e1e1e1; border-radius: 8px; overflow: hidden;">
         <div style="background-color: #C0392B; padding: 20px; text-align: center; color: white;">
-          <h1 style="margin: 0;">NITER Blood Connect</h1>
+          <h1 style="margin: 0;">NITER Blood Bridge</h1>
         </div>
         <div style="padding: 30px; line-height: 1.6; color: #333;">
           <h2 style="color: #C0392B;">Reset Your Password</h2>
@@ -79,7 +79,7 @@ export class NotificationsService implements OnModuleInit {
           <p style="font-size: 14px; color: #666;">This link will expire in 15 minutes. If you didn't request a password reset, you can safely ignore this email.</p>
         </div>
         <div style="background-color: #f9f9f9; padding: 15px; text-align: center; font-size: 12px; color: #999;">
-          <p>&copy; ${new Date().getFullYear()} NITER Blood Connect. All rights reserved.</p>
+          <p>&copy; ${new Date().getFullYear()} NITER Blood Bridge. All rights reserved.</p>
         </div>
       </div>
     `;
@@ -88,7 +88,7 @@ export class NotificationsService implements OnModuleInit {
       await this.transporter.sendMail({
         from: this.configService.get('SMTP_FROM'),
         to: email,
-        subject: 'Reset Password - NITER Blood Connect',
+        subject: 'Reset Password - NITER Blood Bridge',
         html,
       });
     } catch (error) {
@@ -102,10 +102,10 @@ export class NotificationsService implements OnModuleInit {
       await this.transporter.sendMail({
         from: this.configService.get('SMTP_FROM'),
         to: email,
-        subject: 'Profile Deleted - NITER Blood Connect',
+        subject: 'Profile Deleted - NITER Blood Bridge',
         html: `
           <h1>Profile Deleted</h1>
-          <p>Your profile has been permanently deleted from NITER Blood Connect.</p>
+          <p>Your profile has been permanently deleted from NITER Blood Bridge.</p>
           ${note ? `<p>Admin note: ${note}</p>` : ''}
         `,
       });
@@ -119,7 +119,7 @@ export class NotificationsService implements OnModuleInit {
       await this.transporter.sendMail({
         from: this.configService.get('SMTP_FROM'),
         to: email,
-        subject: 'Deletion Request Rejected - NITER Blood Connect',
+        subject: 'Deletion Request Rejected - NITER Blood Bridge',
         html: `
           <h1>Deletion Request Rejected</h1>
           <p>Your profile deletion request has been rejected. Your profile remains active.</p>

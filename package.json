@@ -1,7 +1,7 @@
 {
   "name": "niter-blood-connect-api",
   "version": "1.0.0",
-  "description": "NITER Blood Connect Backend API",
+  "description": "NITER Blood Bridge Backend API",
   "author": "NITER",
   "private": true,
   "license": "MIT",

@@ -1,6 +1,6 @@
-# NITER Blood Connect API
+# NITER Blood Bridge API
 
-Backend API for NITER Blood Connect - a blood donor search and management platform.
+Backend API for NITER Blood Bridge - a blood donor search and management platform.
 
 ## Tech Stack
 
@@ -32,27 +32,32 @@ src/
 ## Setup
 
 1. Install dependencies:
+
 ```bash
 npm install
 ```
 
 2. Set up environment variables:
+
 ```bash
 cp .env.example .env
 # Edit .env with your configuration
 ```
 
 3. Run database migrations:
+
 ```bash
 npx prisma migrate dev
 ```
 
 4. Generate Prisma client:
+
 ```bash
 npx prisma generate
 ```
 
 5. Start the development server:
+
 ```bash
 npm run start:dev
 ```
@@ -60,20 +65,21 @@ npm run start:dev
 ## API Documentation
 
 Once the server is running, visit:
+
 - Swagger UI: http://localhost:3001/api/docs
 
 ## Environment Variables
 
-| Variable | Description |
-|----------|-------------|
-| `DATABASE_URL` | PostgreSQL connection string |
-| `JWT_SECRET` | JWT signing secret |
-| `JWT_REFRESH_SECRET` | JWT refresh token secret |
-| `GOOGLE_CLIENT_ID` | Google OAuth client ID |
-| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret |
-| `FRONTEND_URL` | Frontend application URL |
-| `RESEND_API_KEY` | Resend email API key |
-| `PORT` | Server port (default: 3001) |
+| Variable               | Description                  |
+| ---------------------- | ---------------------------- |
+| `DATABASE_URL`         | PostgreSQL connection string |
+| `JWT_SECRET`           | JWT signing secret           |
+| `JWT_REFRESH_SECRET`   | JWT refresh token secret     |
+| `GOOGLE_CLIENT_ID`     | Google OAuth client ID       |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret   |
+| `FRONTEND_URL`         | Frontend application URL     |
+| `RESEND_API_KEY`       | Resend email API key         |
+| `PORT`                 | Server port (default: 3001)  |
 
 ## Scripts
 

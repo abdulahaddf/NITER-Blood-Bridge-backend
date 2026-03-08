@@ -50,7 +50,7 @@ async function bootstrap() {
 
   // Swagger documentation
   const config = new DocumentBuilder()
-    .setTitle('NITER Blood Connect API')
+    .setTitle('NITER Blood Bridge API')
     .setDescription('Blood donor search and management API')
     .setVersion('1.0')
     .addBearerAuth()

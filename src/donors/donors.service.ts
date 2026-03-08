@@ -33,17 +33,21 @@ export class DonorsService {
       willingToDonate,
       sortBy = 'eligible',
       page = 1,
-      limit = 20,
+      limit = 39,
     } = query;
 
+    // ── Build DonorProfile WHERE clause ────────────────────────
     const where: any = {};
+    const andConditions: any[] = [];
 
     // Search by name or student ID
     if (search) {
-      where.OR = [
-        { fullName: { contains: search, mode: 'insensitive' } },
-        { studentId: { contains: search, mode: 'insensitive' } },
-      ];
+      andConditions.push({
+        OR: [
+          { fullName: { contains: search, mode: 'insensitive' } },
+          { studentId: { contains: search, mode: 'insensitive' } },
+        ],
+      });
     }
 
     // Filter by blood group
@@ -71,13 +75,15 @@ export class DonorsService {
       if (batchMax !== undefined) where.batch.lte = batchMax;
     }
 
-    // Filter by on-campus
+    // Filter by on-campus (use AND so it doesn't clobber search OR)
     if (onCampusOnly) {
-      where.OR = [
-        { currentLocation: { contains: 'niter', mode: 'insensitive' } },
-        { currentLocation: { contains: 'campus', mode: 'insensitive' } },
-        { currentLocation: { contains: 'hall', mode: 'insensitive' } },
-      ];
+      andConditions.push({
+        OR: [
+          { currentLocation: { contains: 'niter', mode: 'insensitive' } },
+          { currentLocation: { contains: 'campus', mode: 'insensitive' } },
+          { currentLocation: { contains: 'hall', mode: 'insensitive' } },
+        ],
+      });
     }
 
     // Filter by willing to donate
@@ -85,13 +91,22 @@ export class DonorsService {
       where.willingToDonate = willingToDonate;
     }
 
-    // --- Build queries for Seed Donors ---
+    // Combine AND conditions
+    if (andConditions.length > 0) {
+      where.AND = andConditions;
+    }
+
+    // ── Build SeedDonor WHERE clause ──────────────────────────
     const seedWhere: any = { isClaimed: false };
+    const seedAnd: any[] = [];
+
     if (search) {
-      seedWhere.OR = [
-        { fullName: { contains: search, mode: 'insensitive' } },
-        { studentId: { contains: search, mode: 'insensitive' } },
-      ];
+      seedAnd.push({
+        OR: [
+          { fullName: { contains: search, mode: 'insensitive' } },
+          { studentId: { contains: search, mode: 'insensitive' } },
+        ],
+      });
     }
     if (bloodGroups && bloodGroups.length > 0) {
       if (compatibilityMode) {
@@ -107,12 +122,13 @@ export class DonorsService {
     if (departments && departments.length > 0) {
       seedWhere.department = { in: departments };
     }
-    // We can't filter string 'batch' easily in DB, we'll do it in memory.
+    if (seedAnd.length > 0) {
+      seedWhere.AND = seedAnd;
+    }
 
-    // Calculate skip and limit
+    // ── Fetch from both tables ────────────────────────────────
     const skip = (page - 1) * limit;
 
-    // Fetch all matching from both tables (without skip/take)
     const [dbProfiles, dbSeedDonors] = await Promise.all([
       this.prisma.donorProfile.findMany({
         where,
@@ -128,7 +144,7 @@ export class DonorsService {
     ]);
 
     // Format profiles
-    let formattedProfiles = dbProfiles.map((profile) => ({
+    const formattedProfiles = dbProfiles.map((profile) => ({
       ...profile,
       isImported: false,
       eligibility: this.calculateEligibility(profile),
@@ -136,7 +152,6 @@ export class DonorsService {
 
     // Format seed donors
     let formattedSeeds = dbSeedDonors.map((seed) => {
-      // Extract numeric batch if possible
       const batchNum = seed.batch ? parseInt(seed.batch.replace(/\D/g, ''), 10) : 0;
       return {
         id: seed.id,
@@ -144,13 +159,13 @@ export class DonorsService {
         userId: null,
         user: null,
         fullName: seed.fullName,
-        department: seed.department as Department || 'TE',
+        department: (seed.department as Department) || 'TE',
         idNumber: seed.studentId,
         studentId: seed.studentId,
         batch: isNaN(batchNum) ? 0 : batchNum,
         phone: seed.phone || '',
         email: '',
-        currentLocation: 'Campus', // Assume campus to match onCampus filters
+        currentLocation: 'Campus',
         hometown: seed.hometown || '',
         bloodGroup: seed.bloodGroup,
         lastDonationDate: null,
@@ -171,7 +186,7 @@ export class DonorsService {
       };
     });
 
-    // Memory filter seed donors for batch
+    // Memory-filter seed donors for batch
     if (batchMin !== undefined || batchMax !== undefined) {
       formattedSeeds = formattedSeeds.filter((s) => {
         if (batchMin !== undefined && s.batch < batchMin) return false;
@@ -180,8 +195,15 @@ export class DonorsService {
       });
     }
 
+    // If willingToDonate filter is explicitly false, exclude seed donors
+    // (seed donors are assumed willing)
+    let seedsToInclude = formattedSeeds;
+    if (willingToDonate === false) {
+      seedsToInclude = [];
+    }
+
     // Combine all results
-    let allResults = [...formattedProfiles, ...formattedSeeds] as any[];
+    let allResults = [...formattedProfiles, ...seedsToInclude] as any[];
 
     // Filter by eligibility
     if (eligibilityOnly) {
@@ -256,10 +278,11 @@ export class DonorsService {
   }
 
   async getPublicStats() {
-    const [totalSeed, seedByGroup, registeredProfiles] = await Promise.all([
-      this.prisma.seedDonor.count(),
+    const [unclaimedSeed, unclaimedSeedByGroup, registeredProfiles] = await Promise.all([
+      this.prisma.seedDonor.count({ where: { isClaimed: false } }),
       this.prisma.seedDonor.groupBy({
         by: ['bloodGroup'],
+        where: { isClaimed: false },
         _count: {
           bloodGroup: true,
         },
@@ -267,49 +290,38 @@ export class DonorsService {
       this.prisma.donorProfile.findMany(),
     ]);
 
-    // Construct blood group stats from seed data as base
     const bgStatsMap: Record<string, { bloodGroup: BloodGroup; count: number; eligibleCount: number }> = {};
-    
-    // Initialize with all groups
+
     const BLOOD_GROUPS: BloodGroup[] = ['A_POS', 'A_NEG', 'B_POS', 'B_NEG', 'AB_POS', 'AB_NEG', 'O_POS', 'O_NEG'];
-    BLOOD_GROUPS.forEach(bg => {
+    BLOOD_GROUPS.forEach((bg) => {
       bgStatsMap[bg] = { bloodGroup: bg, count: 0, eligibleCount: 0 };
     });
 
-    // Add seed counts
-    seedByGroup.forEach(stat => {
+    // Add unclaimed seed donors per group (seed donors are considered eligible by default)
+    unclaimedSeedByGroup.forEach((stat) => {
       if (bgStatsMap[stat.bloodGroup]) {
-        bgStatsMap[stat.bloodGroup].count = stat._count.bloodGroup;
-        // For seed data, we assume all are potentially eligible until claimed and updated
-        bgStatsMap[stat.bloodGroup].eligibleCount = stat._count.bloodGroup;
+        bgStatsMap[stat.bloodGroup].count += stat._count.bloodGroup;
+        bgStatsMap[stat.bloodGroup].eligibleCount += stat._count.bloodGroup;
       }
     });
 
-    // Overlay registered profile data (more accurate)
+    // Add registered stats
     const registeredStats = await this.getStats();
-    registeredStats.bloodGroupStats.forEach(stat => {
-      // Overwrite or add to seed data? 
-      // Usually registered users ARE seed donors who claimed their profile.
-      // So we use registered data to refine the counts if necessary, 
-      // but for simplicity in "Public Stats", if seedCount > 0 we use it as base.
+    registeredStats.bloodGroupStats.forEach((stat) => {
       if (bgStatsMap[stat.bloodGroup]) {
-        // eligibleCount from profiles is more accurate (checks lastDonationDate)
-        // However, if we just overwrite, we might lose the 436 scale.
-        // Let's ensure count is at least the seed count or registered count.
-        bgStatsMap[stat.bloodGroup].eligibleCount = Math.max(bgStatsMap[stat.bloodGroup].eligibleCount, stat.eligibleCount);
+        bgStatsMap[stat.bloodGroup].count += stat.count;
+        bgStatsMap[stat.bloodGroup].eligibleCount += stat.eligibleCount;
       }
     });
 
     const eligibleDonorsFromProfiles = registeredProfiles.filter(
       (p) => this.calculateEligibility(p).eligible,
     ).length;
-    
-    // If only 1 profile exists and it's not eligible, showing 0 eligible is technically correct but discouraging.
-    // For "Public Stats" on a new site, we want to show the potential.
-    const totalPotentialEligible = Math.max(totalSeed, eligibleDonorsFromProfiles);
+
+    const totalPotentialEligible = unclaimedSeed + eligibleDonorsFromProfiles;
 
     return {
-      totalDonors: Math.max(totalSeed, registeredStats.totalDonors),
+      totalDonors: unclaimedSeed + registeredStats.totalDonors,
       eligibleDonors: totalPotentialEligible,
       bloodGroupsAvailable: 8,
       byBloodGroup: Object.values(bgStatsMap),
