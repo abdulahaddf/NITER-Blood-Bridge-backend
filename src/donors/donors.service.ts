@@ -85,56 +85,132 @@ export class DonorsService {
       where.willingToDonate = willingToDonate;
     }
 
+    // --- Build queries for Seed Donors ---
+    const seedWhere: any = { isClaimed: false };
+    if (search) {
+      seedWhere.OR = [
+        { fullName: { contains: search, mode: 'insensitive' } },
+        { studentId: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+    if (bloodGroups && bloodGroups.length > 0) {
+      if (compatibilityMode) {
+        const compatibleGroups = new Set<BloodGroup>();
+        bloodGroups.forEach((group) => {
+          BloodCompatibility[group].forEach((g) => compatibleGroups.add(g));
+        });
+        seedWhere.bloodGroup = { in: Array.from(compatibleGroups) };
+      } else {
+        seedWhere.bloodGroup = { in: bloodGroups };
+      }
+    }
+    if (departments && departments.length > 0) {
+      seedWhere.department = { in: departments };
+    }
+    // We can't filter string 'batch' easily in DB, we'll do it in memory.
+
+    // Calculate skip and limit
     const skip = (page - 1) * limit;
 
-    const [profiles, total] = await Promise.all([
+    // Fetch all matching from both tables (without skip/take)
+    const [dbProfiles, dbSeedDonors] = await Promise.all([
       this.prisma.donorProfile.findMany({
         where,
-        skip,
-        take: limit,
         include: {
           user: {
-            select: {
-              id: true,
-              isActive: true,
-            },
+            select: { id: true, isActive: true },
           },
         },
       }),
-      this.prisma.donorProfile.count({ where }),
+      this.prisma.seedDonor.findMany({
+        where: seedWhere,
+      }),
     ]);
 
-    // Calculate eligibility for each profile
-    let results = profiles.map((profile) => ({
+    // Format profiles
+    let formattedProfiles = dbProfiles.map((profile) => ({
       ...profile,
+      isImported: false,
       eligibility: this.calculateEligibility(profile),
     }));
 
+    // Format seed donors
+    let formattedSeeds = dbSeedDonors.map((seed) => {
+      // Extract numeric batch if possible
+      const batchNum = seed.batch ? parseInt(seed.batch.replace(/\D/g, ''), 10) : 0;
+      return {
+        id: seed.id,
+        isImported: true,
+        userId: null,
+        user: null,
+        fullName: seed.fullName,
+        department: seed.department as Department || 'TE',
+        idNumber: seed.studentId,
+        studentId: seed.studentId,
+        batch: isNaN(batchNum) ? 0 : batchNum,
+        phone: seed.phone || '',
+        email: '',
+        currentLocation: 'Campus', // Assume campus to match onCampus filters
+        hometown: seed.hometown || '',
+        bloodGroup: seed.bloodGroup,
+        lastDonationDate: null,
+        totalDonations: 0,
+        availabilityStatus: 'AVAILABLE',
+        availabilityNote: 'Imported from previous database',
+        willingToDonate: true,
+        seedMatched: false,
+        profileComplete: false,
+        profilePhoto: null,
+        createdAt: seed.importedAt,
+        updatedAt: seed.importedAt,
+        eligibility: {
+          status: 'UNCONFIRMED',
+          label: 'Imported Data',
+          eligible: true,
+        },
+      };
+    });
+
+    // Memory filter seed donors for batch
+    if (batchMin !== undefined || batchMax !== undefined) {
+      formattedSeeds = formattedSeeds.filter((s) => {
+        if (batchMin !== undefined && s.batch < batchMin) return false;
+        if (batchMax !== undefined && s.batch > batchMax) return false;
+        return true;
+      });
+    }
+
+    // Combine all results
+    let allResults = [...formattedProfiles, ...formattedSeeds] as any[];
+
     // Filter by eligibility
     if (eligibilityOnly) {
-      results = results.filter((p) => p.eligibility.eligible);
+      allResults = allResults.filter((p) => p.eligibility.eligible);
     }
 
     // Sort results
-    results.sort((a, b) => {
+    allResults.sort((a, b) => {
       switch (sortBy) {
         case 'eligible':
           if (a.eligibility.eligible && !b.eligibility.eligible) return -1;
           if (!a.eligibility.eligible && b.eligibility.eligible) return 1;
           return 0;
         case 'donations':
-          return b.totalDonations - a.totalDonations;
+          return (b.totalDonations || 0) - (a.totalDonations || 0);
         case 'recent':
           return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
         case 'batch':
-          return b.batch - a.batch;
+          return (b.batch || 0) - (a.batch || 0);
         default:
           return 0;
       }
     });
 
+    const total = allResults.length;
+    const paginatedData = allResults.slice(skip, skip + limit);
+
     return {
-      data: results,
+      data: paginatedData,
       meta: {
         total,
         page,
